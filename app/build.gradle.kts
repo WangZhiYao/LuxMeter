@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.paperloong.illuminometer"
+    namespace = "com.paperloong.lux"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.paperloong.illuminometer"
+        applicationId = "com.paperloong.lux"
         minSdk = 24
         targetSdk = 36
         versionCode = 2

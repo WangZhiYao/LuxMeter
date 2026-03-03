@@ -1,4 +1,4 @@
-# Illuminometer
+# LuxMeter
 
 An app that uses the Android phone's light sensor to detect the current ambient light intensity,
 mainly used to check whether my plants are receiving the appropriate light intensity under the grow

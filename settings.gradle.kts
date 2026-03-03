@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Illuminometer"
+rootProject.name = "LuxMeter"
 include(":app")

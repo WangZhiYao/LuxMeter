@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Illuminometer</string>
+    <string name="app_name">LuxMeter</string>
 
     <string name="min">Min</string>
     <string name="avg">Avg</string>

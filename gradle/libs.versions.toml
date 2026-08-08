@@ -1,52 +1,64 @@
 [versions]
-android = "9.2.1"
-sonarqube = "7.3.0.8198"
+# Base
+android = "9.3.1"
+kotlin = "2.4.10"
+ksp = "2.3.11"
+sonarqube = "7.4.0.8496"
+
+# Testing
 junit = "4.13.2"
-junitVersion = "1.3.0"
-espressoCore = "3.7.0"
+androidx-junit = "1.3.0"
+espresso = "3.7.0"
 leakcanary = "2.14"
-kotlin = "2.3.21"
-kotlinxCoroutines = "1.10.2"
-ksp = "2.3.7"
-hilt = "2.59.2"
-orbitMVI = "11.0.0"
-coreKtx = "1.18.0"
-lifecycle = "2.10.0"
-activityCompose = "1.13.0"
-constraintlayoutCompose = "1.1.1"
-composeBom = "2026.04.01"
+
+# DI
+hilt = "2.60.1"
+
+# AndroidX
+androidx-core = "1.19.0"
+lifecycle = "2.11.0"
 navigation = "2.9.8"
-hiltNavigation = "1.3.0"
-datastore = "1.2.1"
 room = "2.8.4"
-paging = "3.4.2"
+paging = "3.5.0"
+datastore = "1.2.1"
+
+# Compose
+compose-bom = "2026.06.01"
+activity-compose = "1.13.0"
+hilt-navigation = "1.4.0"
+constraintlayout-compose = "1.1.2"
+
+# Async
+kotlinx-coroutines = "1.11.0"
+
+# MVI
+orbit-mvi = "12.0.0"
 
 [libraries]
 # Test
 junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-junit" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 leakcanary-android = { group = "com.squareup.leakcanary", name = "leakcanary-android", version.ref = "leakcanary" }
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 # Kotlin Coroutines
-kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
-kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 # Hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 # Orbit-Mvi
-orbit-mvi-core = { group = "org.orbit-mvi", name = "orbit-core", version.ref = "orbitMVI" }
-orbit-mvi-viewmodel = { group = "org.orbit-mvi", name = "orbit-viewmodel", version.ref = "orbitMVI" }
-orbit-mvi-compose = { group = "org.orbit-mvi", name = "orbit-compose", version.ref = "orbitMVI" }
+orbit-mvi-core = { group = "org.orbit-mvi", name = "orbit-core", version.ref = "orbit-mvi" }
+orbit-mvi-viewmodel = { group = "org.orbit-mvi", name = "orbit-viewmodel", version.ref = "orbit-mvi" }
+orbit-mvi-compose = { group = "org.orbit-mvi", name = "orbit-compose", version.ref = "orbit-mvi" }
 # AndroidX
-androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
 # Compose
-androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
-androidx-constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayoutCompose" }
-androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
+androidx-constraintlayout-compose = { group = "androidx.constraintlayout", name = "constraintlayout-compose", version.ref = "constraintlayout-compose" }
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
@@ -54,7 +66,7 @@ androidx-compose-material-icons-core = { group = "androidx.compose.material", na
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
-androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigation" }
+androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt-navigation" }
 # DataStore
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 # Room
@@ -66,7 +78,6 @@ androidx-paging-runtime = { group = "androidx.paging", name = "paging-runtime-kt
 androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "paging" }
 
 [bundles]
-kotlinx-coroutines = ["kotlinx-coroutines-core", "kotlinx-coroutines-android"]
 orbit-mvi = ["orbit-mvi-core", "orbit-mvi-viewmodel", "orbit-mvi-compose"]
 androidx-compose = ["androidx-compose-ui", "androidx-compose-ui-graphics", "androidx-compose-ui-tooling-preview", "androidx-compose-material-icons-core", "androidx-compose-material3", "androidx-navigation-compose", "androidx-hilt-navigation-compose"]
 paging = ["androidx-paging-runtime", "androidx-paging-compose"]

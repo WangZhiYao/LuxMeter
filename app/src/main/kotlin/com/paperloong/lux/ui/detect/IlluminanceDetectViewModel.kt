@@ -18,9 +18,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import org.orbitmvi.orbit.Container
-import org.orbitmvi.orbit.ContainerHost
-import org.orbitmvi.orbit.viewmodel.container
+import org.orbitmvi.orbit.OrbitContainer
+import org.orbitmvi.orbit.OrbitContainerHost
+import org.orbitmvi.orbit.viewmodel.orbitContainer
 import javax.inject.Inject
 import kotlin.math.max
 import kotlin.math.min
@@ -37,11 +37,11 @@ class IlluminanceDetectViewModel @Inject constructor(
     private val settingRepository: SettingRepository,
     private val detectRecordRepository: DetectRecordRepository,
     @param:IODispatcher private val dispatcher: CoroutineDispatcher
-) : ContainerHost<IlluminanceDetectUiState, IlluminanceDetectSideEffect>,
+) : OrbitContainerHost<IlluminanceDetectUiState, IlluminanceDetectUiState, IlluminanceDetectSideEffect>,
     AndroidViewModel(application) {
 
-    override val container: Container<IlluminanceDetectUiState, IlluminanceDetectSideEffect> =
-        container(IlluminanceDetectUiState())
+    override val container: OrbitContainer<IlluminanceDetectUiState, IlluminanceDetectUiState, IlluminanceDetectSideEffect>
+        get() = orbitContainer(IlluminanceDetectUiState())
 
     private var currentJob: Job? = null
     private val detectRecordList: MutableList<DetectRecord> = mutableListOf()

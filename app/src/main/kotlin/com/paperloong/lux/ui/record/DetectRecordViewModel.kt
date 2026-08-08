@@ -13,9 +13,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.stateIn
-import org.orbitmvi.orbit.Container
-import org.orbitmvi.orbit.ContainerHost
-import org.orbitmvi.orbit.viewmodel.container
+import org.orbitmvi.orbit.OrbitContainer
+import org.orbitmvi.orbit.OrbitContainerHost
+import org.orbitmvi.orbit.viewmodel.orbitContainer
 import javax.inject.Inject
 
 /**
@@ -28,10 +28,11 @@ import javax.inject.Inject
 class DetectRecordViewModel @Inject constructor(
     private val application: Application,
     private val detectRecordRepository: DetectRecordRepository
-) : ContainerHost<DetectRecordUiState, DetectRecordSideEffect>, AndroidViewModel(application) {
+) : OrbitContainerHost<DetectRecordUiState, DetectRecordUiState, DetectRecordSideEffect>,
+    AndroidViewModel(application) {
 
-    override val container: Container<DetectRecordUiState, DetectRecordSideEffect> =
-        container(DetectRecordUiState())
+    override val container: OrbitContainer<DetectRecordUiState, DetectRecordUiState, DetectRecordSideEffect>
+        get() = orbitContainer(DetectRecordUiState())
 
     val detectRecordList: StateFlow<PagingData<DetectRecord>> =
         detectRecordRepository.observeDetectRecordList()
@@ -65,5 +66,4 @@ class DetectRecordViewModel @Inject constructor(
                 }
         }
     }
-
 }

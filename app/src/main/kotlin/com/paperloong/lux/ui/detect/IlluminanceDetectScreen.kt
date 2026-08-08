@@ -123,7 +123,9 @@ fun IlluminanceDetectContent(
     onAddRecordClick: () -> Unit = {}
 ) {
     Scaffold(
-        modifier = modifier.fillMaxSize().keepScreenOn(),
+        modifier = modifier
+            .fillMaxSize()
+            .keepScreenOn(),
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(text = stringResource(id = R.string.app_name)) },

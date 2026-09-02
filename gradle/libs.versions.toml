@@ -3,7 +3,7 @@
 android = "9.3.2"
 kotlin = "2.4.10"
 ksp = "2.3.11"
-sonarqube = "7.4.0.8496"
+sonarqube = "7.5.0.8588"
 
 # Testing
 junit = "4.13.2"

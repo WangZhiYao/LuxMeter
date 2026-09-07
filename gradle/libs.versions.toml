@@ -1,7 +1,7 @@
 [versions]
 # Base
 android = "9.3.2"
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 ksp = "2.3.11"
 sonarqube = "7.4.0.8496"
 

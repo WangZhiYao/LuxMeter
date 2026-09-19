@@ -2,7 +2,7 @@
 # Base
 android = "9.4.1"
 kotlin = "2.4.20"
-ksp = "2.3.11"
+ksp = "2.3.12"
 sonarqube = "7.5.0.8588"
 
 # Testing

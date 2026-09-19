@@ -31,8 +31,8 @@ class DetectRecordViewModel @Inject constructor(
 ) : OrbitContainerHost<DetectRecordUiState, DetectRecordUiState, DetectRecordSideEffect>,
     AndroidViewModel(application) {
 
-    override val container: OrbitContainer<DetectRecordUiState, DetectRecordUiState, DetectRecordSideEffect>
-        get() = orbitContainer(DetectRecordUiState())
+    override val container: OrbitContainer<DetectRecordUiState, DetectRecordUiState, DetectRecordSideEffect> =
+        orbitContainer(DetectRecordUiState())
 
     val detectRecordList: StateFlow<PagingData<DetectRecord>> =
         detectRecordRepository.observeDetectRecordList()

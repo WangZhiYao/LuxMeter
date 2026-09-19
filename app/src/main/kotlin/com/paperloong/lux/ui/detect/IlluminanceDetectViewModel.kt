@@ -40,8 +40,8 @@ class IlluminanceDetectViewModel @Inject constructor(
 ) : OrbitContainerHost<IlluminanceDetectUiState, IlluminanceDetectUiState, IlluminanceDetectSideEffect>,
     AndroidViewModel(application) {
 
-    override val container: OrbitContainer<IlluminanceDetectUiState, IlluminanceDetectUiState, IlluminanceDetectSideEffect>
-        get() = orbitContainer(IlluminanceDetectUiState())
+    override val container: OrbitContainer<IlluminanceDetectUiState, IlluminanceDetectUiState, IlluminanceDetectSideEffect> =
+        orbitContainer(IlluminanceDetectUiState())
 
     private var currentJob: Job? = null
     private val detectRecordList: MutableList<DetectRecord> = mutableListOf()

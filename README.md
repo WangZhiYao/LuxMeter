@@ -12,18 +12,25 @@ $$
 E_v(fc) = E_v(lx) * 0.09290304
 $$
 
+## Features
+
+- Live illuminance reading in lux or FC, switchable with one tap
+- Session statistics (min / avg / max) and a live trend chart — press the chart to inspect values
+- Target illuminance range (stored in lux, auto-converted when viewing in FC) with low / suitable /
+  high judgment
+- Save readings with remark and location, with recent saves on the detect screen
+- Records searchable by remark and location, with a today filter and swipe-to-delete
+- Export records as CSV (values normalized to lux) and share
+
 ## Screenshot
 
 <div class="half" style="text-align: center;">
-    <img src="screenshot/Screenshot_20240502_113546.jpg" width="203" alt="Detect" />
-    <img src="screenshot/Screenshot_20240502_113602.jpg" width="203" alt="Add Record" />
-    <img src="screenshot/Screenshot_20240502_113610.jpg" width="203" alt="Record List" />
-    <img src="screenshot/Screenshot_20240502_113625.jpg" width="203" alt="Swipe to remove record" />
+    <img src="screenshot/Screenshot_20260925_181638.png" width="203" alt="Detect" />
+    <img src="screenshot/Screenshot_20260925_181726.png" width="203" alt="Set target range" />
+    <img src="screenshot/Screenshot_20260925_181802.png" width="203" alt="Save record" />
+    <img src="screenshot/Screenshot_20260925_181815.png" width="203" alt="Record list" />
+    <img src="screenshot/Screenshot_20260925_181833.png" width="203" alt="Swipe to delete record" />
 </div>
-
-## Todo
-
-- [x] Detect record
 
 ## License
 

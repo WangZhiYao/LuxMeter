@@ -1,21 +1,23 @@
 package com.paperloong.lux.ui.record
 
 import android.app.Application
+import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.paging.PagingData
-import androidx.paging.cachedIn
 import com.paperloong.lux.R
+import com.paperloong.lux.data.CsvExporter
 import com.paperloong.lux.data.DetectRecordRepository
 import com.paperloong.lux.model.DetectRecord
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.stateIn
 import org.orbitmvi.orbit.OrbitContainer
 import org.orbitmvi.orbit.OrbitContainerHost
 import org.orbitmvi.orbit.viewmodel.orbitContainer
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -34,14 +36,31 @@ class DetectRecordViewModel @Inject constructor(
     override val container: OrbitContainer<DetectRecordUiState, DetectRecordUiState, DetectRecordSideEffect> =
         orbitContainer(DetectRecordUiState())
 
-    val detectRecordList: StateFlow<PagingData<DetectRecord>> =
-        detectRecordRepository.observeDetectRecordList()
-            .cachedIn(viewModelScope)
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = PagingData.empty()
-            )
+    private var recordJob: Job? = null
+
+    init {
+        intent {
+            detectRecordRepository.observeLocationList()
+                .collect { locations ->
+                    reduce { state.copy(locations = locations) }
+                }
+        }
+        observeRecords()
+    }
+
+    fun setSearch(query: String) {
+        intent {
+            reduce { state.copy(search = query) }
+            observeRecords()
+        }
+    }
+
+    fun selectLocation(location: String?) {
+        intent {
+            reduce { state.copy(selectedLocation = location) }
+            observeRecords()
+        }
+    }
 
     fun attemptRemoveRecord(detectRecord: DetectRecord) {
         intent {
@@ -50,7 +69,6 @@ class DetectRecordViewModel @Inject constructor(
                     postSideEffect(Snack(application.getString(R.string.error_remove_record)))
                 }
                 .collect {
-
                 }
         }
     }
@@ -62,8 +80,67 @@ class DetectRecordViewModel @Inject constructor(
                     postSideEffect(Snack(application.getString(R.string.error_remove_all_record)))
                 }
                 .collect {
-
                 }
         }
+    }
+
+    fun exportRecords() {
+        intent {
+            val records = detectRecordRepository.getDetectRecordList(
+                location = state.selectedLocation,
+                search = state.search
+            )
+            if (records.isEmpty()) {
+                postSideEffect(Snack(application.getString(R.string.error_export_empty)))
+                return@intent
+            }
+            val csv = CsvExporter.export(records)
+            val result = runCatching {
+                val dir = File(application.cacheDir, EXPORT_DIR).apply { mkdirs() }
+                val name = "luxmeter-records-" +
+                        SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date()) + ".csv"
+                val file = File(dir, name)
+                file.writeText(csv, Charsets.UTF_8)
+                FileProvider.getUriForFile(
+                    application,
+                    application.packageName + ".fileprovider",
+                    file
+                )
+            }
+            result.fold(
+                onSuccess = { uri: Uri ->
+                    postSideEffect(ShareCsv(uri))
+                    postSideEffect(
+                        Snack(
+                            application.getString(
+                                R.string.export_success,
+                                records.size
+                            )
+                        )
+                    )
+                },
+                onFailure = {
+                    postSideEffect(Snack(application.getString(R.string.error_export)))
+                }
+            )
+        }
+    }
+
+    private fun observeRecords() {
+        recordJob?.cancel()
+        recordJob = intent {
+            detectRecordRepository.observeDetectRecordList(
+                location = state.selectedLocation,
+                search = state.search
+            )
+                .collect { list ->
+                    reduce { state.copy(records = list) }
+                }
+        }
+    }
+
+    companion object {
+
+        private const val EXPORT_DIR = "exports"
     }
 }

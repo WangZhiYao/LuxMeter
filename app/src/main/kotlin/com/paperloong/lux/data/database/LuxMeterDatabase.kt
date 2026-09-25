@@ -1,5 +1,6 @@
 package com.paperloong.lux.data.database
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.paperloong.lux.data.database.dao.DetectRecordDao
@@ -13,10 +14,13 @@ import com.paperloong.lux.data.database.entity.DetectRecordEntity
  */
 @Database(
     entities = [DetectRecordEntity::class],
-    version = 1
+    version = 2,
+    exportSchema = true,
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2)
+    ]
 )
 abstract class LuxMeterDatabase : RoomDatabase() {
 
     abstract fun detectRecordDao(): DetectRecordDao
-
 }

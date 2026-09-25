@@ -1,61 +1,57 @@
 package com.paperloong.lux.ui.detect
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material.icons.automirrored.rounded.ListAlt
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FabPosition
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.keepScreenOn
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.paperloong.lux.R
 import com.paperloong.lux.constant.IlluminanceUnit
+import com.paperloong.lux.ext.dayOffsetFromToday
+import com.paperloong.lux.ext.displayValue
 import com.paperloong.lux.ext.formatToDateString
-import com.paperloong.lux.model.DetectRecord
+import com.paperloong.lux.ext.formatToShortDate
+import com.paperloong.lux.ext.formatToShortTime
+import com.paperloong.lux.ext.luxToFc
+import com.paperloong.lux.model.IlluminanceJudgment
 import com.paperloong.lux.ui.Screen
-import com.paperloong.lux.ui.theme.LuxMeterTheme
+import com.paperloong.lux.ui.detect.components.HeroReadingCard
+import com.paperloong.lux.ui.detect.components.RecentSavesCard
+import com.paperloong.lux.ui.detect.components.SaveRecordDialog
+import com.paperloong.lux.ui.detect.components.SessionTrendCard
+import com.paperloong.lux.ui.detect.components.StatsBar
+import com.paperloong.lux.ui.detect.components.TargetRangeDialog
+import com.paperloong.lux.ui.detect.components.UnitTogglePill
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
 
@@ -87,29 +83,67 @@ fun IlluminanceDetectScreen(
         }
     }
 
-    var showAddRecordDialog by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var showTargetDialog by remember { mutableStateOf(false) }
+    var saveSnapshot by remember { mutableStateOf<Triple<Float, IlluminanceUnit, Long>?>(null) }
 
     IlluminanceDetectContent(
-        state,
-        Modifier,
-        snackbarHostState,
-        onRefreshClick = { viewModel.refreshData() },
+        state = state,
+        snackbarHostState = snackbarHostState,
+        onUnitClick = viewModel::setIlluminanceUnit,
         onRecordClick = { navController.navigate(Screen.DetectRecord.route) },
-        onUnitClick = { unit -> viewModel.setIlluminanceUnit(unit) },
-        onAddRecordClick = { showAddRecordDialog = true }
+        onJudgmentClick = { showTargetDialog = true },
+        onRestartSessionClick = viewModel::restartSession,
+        onViewAllClick = { navController.navigate(Screen.DetectRecord.route) },
+        onSaveClick = {
+            // 冻结弹窗数值快照，避免弹窗内数值随传感器跳动、存下非所见值
+            saveSnapshot = Triple(displayValueOf(state.current, state.unit), state.unit, state.time)
+            showSaveDialog = true
+        }
     )
 
-    if (showAddRecordDialog) {
-        AddRecordDialog(
-            state = state,
-            onConfirmClick = { detectRecord ->
-                showAddRecordDialog = false
-                viewModel.attemptAddRecord(detectRecord)
+    if (showSaveDialog) {
+        val snapshot = saveSnapshot
+        if (snapshot != null) {
+            SaveRecordDialog(
+                valueText = snapshot.second.format(snapshot.first),
+                unitLabel = snapshot.second.name,
+                timeText = snapshot.third.formatToDateString(),
+                locationSuggestions = state.locationSuggestions,
+                onConfirmClick = { location, remark ->
+                    showSaveDialog = false
+                    viewModel.attemptAddRecord(
+                        value = snapshot.first,
+                        unit = snapshot.second,
+                        time = snapshot.third,
+                        location = location,
+                        remark = remark
+                    )
+                },
+                onDismissRequest = { showSaveDialog = false }
+            )
+        }
+    }
+
+    if (showTargetDialog) {
+        TargetRangeDialog(
+            initial = state.target,
+            currentLux = state.current,
+            onConfirmClick = { min, max ->
+                showTargetDialog = false
+                viewModel.setTargetRange(min, max)
             },
-            onDismissRequest = { showAddRecordDialog = false }
+            onClearClick = {
+                showTargetDialog = false
+                viewModel.clearTargetRange()
+            },
+            onDismissRequest = { showTargetDialog = false }
         )
     }
 }
+
+private fun displayValueOf(lux: Float, unit: IlluminanceUnit): Float =
+    if (unit == IlluminanceUnit.FC) lux.luxToFc() else lux
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,288 +151,125 @@ fun IlluminanceDetectContent(
     state: IlluminanceDetectUiState,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    onRefreshClick: () -> Unit = {},
-    onRecordClick: () -> Unit = {},
     onUnitClick: (IlluminanceUnit) -> Unit = {},
-    onAddRecordClick: () -> Unit = {}
+    onRecordClick: () -> Unit = {},
+    onJudgmentClick: () -> Unit = {},
+    onRestartSessionClick: () -> Unit = {},
+    onViewAllClick: () -> Unit = {},
+    onSaveClick: () -> Unit = {}
 ) {
     Scaffold(
         modifier = modifier
             .fillMaxSize()
             .keepScreenOn(),
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(text = stringResource(id = R.string.app_name)) },
-                modifier = modifier,
+            TopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.app_name)
+                    )
+                },
                 actions = {
-                    IconButton(onClick = onRefreshClick) {
-                        Icon(
-                            imageVector = Icons.Rounded.Refresh,
-                            contentDescription = stringResource(id = R.string.refresh_record)
-                        )
-                    }
                     IconButton(onClick = onRecordClick) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_rounded_assignment_24dp),
-                            contentDescription = "Localized description"
+                            imageVector = Icons.AutoMirrored.Rounded.ListAlt,
+                            contentDescription = stringResource(id = R.string.record)
                         )
                     }
-                },
+                }
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                text = { Text(text = stringResource(id = R.string.record)) },
-                icon = {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = ""
-                    )
-                },
-                onClick = onAddRecordClick,
-                modifier = modifier
-            )
-        },
-        floatingActionButtonPosition = FabPosition.Center
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
-        ConstraintLayout(
-            modifier = modifier
+        Column(
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val (valueCard, illuminance, unitGroup) = createRefs()
-
-            ValueCardCombination(
-                state.unit.format(state.min),
-                state.unit.format(state.avg),
-                state.unit.format(state.max),
-                modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .constrainAs(valueCard) {
-                        top.linkTo(parent.top, margin = 8.dp)
+            val unitLabel = state.unit.name.lowercase()
+            val statusText = when (state.judgment) {
+                null -> stringResource(id = R.string.set_target)
+                IlluminanceJudgment.InRange -> stringResource(id = R.string.judgment_ok)
+                is IlluminanceJudgment.TooLow -> stringResource(id = R.string.judgment_low)
+                is IlluminanceJudgment.TooHigh -> stringResource(id = R.string.judgment_high)
+            }
+            val targetText = state.target?.let {
+                stringResource(
+                    id = R.string.target_range_format,
+                    state.unit.format(displayValueOf(it.minLux, state.unit)),
+                    state.unit.format(displayValueOf(it.maxLux, state.unit)),
+                    unitLabel
+                )
+            }
+            UnitTogglePill(
+                unit = state.unit,
+                onUnitClick = onUnitClick
+            )
+            HeroReadingCard(
+                valueText = state.unit.format(displayValueOf(state.current, state.unit)),
+                unitLabel = state.unit.name,
+                judgment = state.judgment,
+                statusText = statusText,
+                targetText = targetText,
+                onJudgmentClick = onJudgmentClick
+            )
+            StatsBar(
+                minText = state.min?.let { state.unit.format(displayValueOf(it, state.unit)) }
+                    ?: "–",
+                avgText = state.avg?.let { state.unit.format(displayValueOf(it, state.unit)) }
+                    ?: "–",
+                maxText = state.max?.let { state.unit.format(displayValueOf(it, state.unit)) }
+                    ?: "–"
+            )
+            // 换算 lambda 以 unit 为 key 记忆，避免每次重组生成新实例导致图内动画重启
+            val toDisplayValue =
+                remember(state.unit) { { lux: Float -> displayValueOf(lux, state.unit) } }
+            val toValueText = remember(state.unit) { { value: Float -> state.unit.format(value) } }
+            SessionTrendCard(
+                trend = state.trend,
+                target = state.target,
+                topLabelText = stringResource(id = R.string.session_trend),
+                hintText = stringResource(id = R.string.trend_scrub_hint),
+                displayValueOf = toDisplayValue,
+                valueTextOf = toValueText,
+                onRestartClick = onRestartSessionClick
+            )
+            val yesterdayText = stringResource(id = R.string.yesterday)
+            RecentSavesCard(
+                records = state.recentRecords,
+                valueTextOf = { record ->
+                    state.unit.format(record.displayValue(state.unit))
+                },
+                timeTextOf = { record ->
+                    when (record.createTime.dayOffsetFromToday()) {
+                        0 -> record.createTime.formatToShortTime()
+                        1 -> yesterdayText + " " + record.createTime.formatToShortTime()
+                        else -> record.createTime.formatToShortDate() + " " + record.createTime.formatToShortTime()
                     }
+                },
+                titleText = stringResource(id = R.string.recent_saves),
+                viewAllText = stringResource(id = R.string.view_all),
+                emptyText = stringResource(id = R.string.recent_saves_empty),
+                onViewAllClick = onViewAllClick
             )
-
-            Illuminance(
-                state.unit.format(state.current),
-                modifier.constrainAs(illuminance) {
-                    top.linkTo(valueCard.bottom, margin = 144.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }
-            )
-
-            IlluminanceUnitGroup(
-                onUnitClick,
-                state.unit,
-                modifier.constrainAs(unitGroup) {
-                    top.linkTo(illuminance.bottom, margin = 64.dp)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }
-            )
-        }
-    }
-}
-
-@Composable
-fun ValueCardCombination(
-    min: String,
-    avg: String,
-    max: String,
-    modifier: Modifier
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        ValueCard(
-            title = stringResource(id = R.string.min),
-            value = min,
-            modifier = Modifier
-                .weight(1f)
-                .aspectRatio(1f)
-        )
-        ValueCard(
-            title = stringResource(id = R.string.avg),
-            value = avg,
-            modifier = Modifier
-                .weight(1f)
-                .aspectRatio(1f)
-        )
-        ValueCard(
-            title = stringResource(id = R.string.max),
-            value = max,
-            modifier = Modifier
-                .weight(1f)
-                .aspectRatio(1f)
-        )
-    }
-}
-
-@Composable
-fun ValueCard(title: String, value: String, modifier: Modifier) {
-    Card(modifier = modifier) {
-        Column(
-            modifier = modifier,
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = title,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                style = MaterialTheme.typography.titleLarge
-            )
-            Text(
-                text = value,
-                modifier = Modifier.padding(top = 4.dp),
-                fontSize = 18.sp,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium
-            )
-        }
-    }
-}
-
-@Composable
-fun Illuminance(value: String, modifier: Modifier) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
-            maxLines = 1,
-            style = MaterialTheme.typography.headlineLarge
-        )
-    }
-}
-
-@Composable
-fun IlluminanceUnitGroup(
-    onUnitClick: (IlluminanceUnit) -> Unit,
-    unit: IlluminanceUnit?,
-    modifier: Modifier
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        val selectedColor = MaterialTheme.colorScheme.primaryContainer
-
-        FilledTonalButton(
-            onClick = { onUnitClick(IlluminanceUnit.LUX) },
-            modifier = Modifier
-                .width(128.dp)
-                .height(48.dp),
-            border = if (unit == IlluminanceUnit.LUX) BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.primaryContainer
-            ) else null
-        ) {
-            Text(
-                text = IlluminanceUnit.LUX.name,
-                color = if (unit == IlluminanceUnit.LUX) selectedColor else Color.Unspecified,
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
-        FilledTonalButton(
-            onClick = { onUnitClick(IlluminanceUnit.FC) },
-            modifier = Modifier
-                .width(128.dp)
-                .height(48.dp),
-            border = if (unit == IlluminanceUnit.FC) BorderStroke(
-                1.dp,
-                selectedColor
-            ) else null
-        ) {
-            Text(
-                text = IlluminanceUnit.FC.name,
-                color = if (unit == IlluminanceUnit.FC) selectedColor else Color.Unspecified,
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
-    }
-}
-
-@Composable
-fun AddRecordDialog(
-    state: IlluminanceDetectUiState,
-    onConfirmClick: (DetectRecord) -> Unit,
-    onDismissRequest: () -> Unit = {}
-) {
-    val detectRecord by remember {
-        mutableStateOf(state.run {
-            DetectRecord(
-                value = current,
-                unit = unit,
-                createTime = time
-            )
-        })
-    }
-    var remark by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        confirmButton = {
-            TextButton(onClick = {
-                onConfirmClick(detectRecord.copy(remark = remark))
-            }) {
-                Text(text = stringResource(id = R.string.confirm))
-            }
-        },
-        title = {
-            Text(text = stringResource(id = R.string.dialog_title_add_record))
-        },
-        text = {
-            Column {
+            Button(
+                onClick = onSaveClick,
+                enabled = state.sessionCount > 0,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp, bottom = 10.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Text(
-                    text = stringResource(
-                        id = R.string.dialog_text_current_value,
-                        detectRecord.unit.format(detectRecord.value)
-                    )
-                )
-                Text(
-                    text = stringResource(
-                        id = R.string.dialog_text_current_unit,
-                        detectRecord.unit
-                    ),
-                    modifier = Modifier.padding(vertical = 6.dp)
-                )
-                Text(
-                    text = stringResource(
-                        id = R.string.dialog_text_current_time,
-                        detectRecord.createTime.formatToDateString()
-                    )
-                )
-                OutlinedTextField(
-                    value = remark,
-                    onValueChange = { remark = it },
-                    modifier = Modifier.padding(top = 6.dp),
-                    label = { Text(text = stringResource(id = R.string.remark)) }
+                    text = "＋ " + stringResource(id = R.string.save_record),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
                 )
             }
         }
-    )
-}
-
-@Preview
-@Composable
-fun LuxMeterDetectScreenPreview() {
-    LuxMeterTheme {
-        val state = IlluminanceDetectUiState(
-            100f,
-            200f,
-            300f,
-            300f,
-            IlluminanceUnit.LUX
-        )
-        IlluminanceDetectContent(state)
     }
 }

@@ -1,9 +1,5 @@
 package com.paperloong.lux.data
 
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
-import androidx.paging.PagingData
-import androidx.paging.map
 import com.paperloong.lux.data.database.dao.DetectRecordDao
 import com.paperloong.lux.data.database.mapper.DetectRecordMapper
 import com.paperloong.lux.di.qualifier.IODispatcher
@@ -36,14 +32,28 @@ class DetectRecordRepository @Inject constructor(
             }
             .flowOn(dispatcher)
 
-    fun observeDetectRecordList(): Flow<PagingData<DetectRecord>> =
-        Pager(PAGING_CONFIG) {
-            detectRecordDao.observeDetectRecordList()
-        }
-            .flow
-            .map { pagingData ->
-                pagingData.map { entity -> detectRecordMapper.mapToModel(entity) }
-            }
+    fun observeDetectRecordList(
+        location: String? = null,
+        search: String = ""
+    ): Flow<List<DetectRecord>> =
+        detectRecordDao.observeDetectRecordList(location, search)
+            .map { list -> list.map { detectRecordMapper.mapToModel(it) } }
+            .flowOn(dispatcher)
+
+    suspend fun getDetectRecordList(
+        location: String? = null,
+        search: String = ""
+    ): List<DetectRecord> =
+        detectRecordDao.getDetectRecordList(location, search)
+            .map { detectRecordMapper.mapToModel(it) }
+
+    fun observeLocationList(): Flow<List<String>> =
+        detectRecordDao.observeLocationList()
+            .flowOn(dispatcher)
+
+    fun observeRecentRecordList(limit: Int = RECENT_RECORD_LIMIT): Flow<List<DetectRecord>> =
+        detectRecordDao.observeRecentRecordList(limit)
+            .map { list -> list.map { detectRecordMapper.mapToModel(it) } }
             .flowOn(dispatcher)
 
     fun deleteDetectRecord(detectRecord: DetectRecord): Flow<Int> =
@@ -60,12 +70,6 @@ class DetectRecordRepository @Inject constructor(
 
     companion object {
 
-        val PAGING_CONFIG: PagingConfig =
-            PagingConfig(
-                pageSize = 20,
-                prefetchDistance = 3,
-                enablePlaceholders = false
-            )
-
+        const val RECENT_RECORD_LIMIT = 2
     }
 }

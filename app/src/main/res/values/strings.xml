@@ -1,24 +1,51 @@
 <resources>
     <string name="app_name">照度计</string>
 
-    <string name="min">最小</string>
-    <string name="avg">平均</string>
-    <string name="max">最大</string>
-
     <string name="record">记录</string>
-    <string name="refresh_record">刷新记录</string>
-    <string name="remark">备注</string>
+    <string name="record_list">记录</string>
+    <string name="remark_optional">备注（可选）</string>
+    <string name="location">位置</string>
     <string name="add_record_success">数据记录成功</string>
 
     <string name="remove_all_record">清空所有记录</string>
 
+    <string name="save_record">保存记录</string>
+    <string name="dialog_title_add_record">保存记录</string>
     <string name="dialog_title_tip">提示</string>
-    <string name="dialog_title_add_record">添加记录</string>
-    <string name="dialog_text_current_value">数值：%s</string>
-    <string name="dialog_text_current_unit">单位：%s</string>
-    <string name="dialog_text_current_time">时间：%s</string>
     <string name="dialog_text_remove_current_detect_record">是否要删除当前记录</string>
     <string name="dialog_text_remove_all_detect_record">是否要删除所有记录</string>
+
+    <string name="target_range">目标光照区间</string>
+    <string name="target_min">下限 (lux)</string>
+    <string name="target_max">上限 (lux)</string>
+    <string name="target_hint">读数落在区间内判定为"合适"</string>
+    <string name="target_store_hint">以 lux 存储；切到 FC 显示时自动换算</string>
+    <string name="set_target">＋ 设置目标区间</string>
+    <string name="clear_target">清除目标</string>
+    <string name="target_range_format">目标 %1$s – %2$s %3$s</string>
+
+    <string name="judgment_ok">✓ 光照合适</string>
+    <string name="judgment_low">↓ 光照偏暗</string>
+    <string name="judgment_high">↑ 光照过强</string>
+
+    <string name="session_trend">本次会话走势</string>
+    <string name="trend_scrub_hint">按住查看数值</string>
+    <string name="restart_session">重新开始</string>
+
+    <string name="recent_saves">最近保存</string>
+    <string name="view_all">查看全部 ›</string>
+    <string name="recent_saves_empty">暂无保存记录</string>
+
+    <string name="search_hint">搜索备注、位置</string>
+    <string name="filter_all">全部</string>
+    <string name="filter_all_with_count">全部 · %1$d</string>
+    <string name="today">今天</string>
+    <string name="yesterday">昨天</string>
+
+    <string name="export">导出</string>
+    <string name="export_success">已导出 %1$d 条</string>
+    <string name="error_export">导出失败</string>
+    <string name="error_export_empty">没有可导出的记录</string>
 
     <string name="confirm">确定</string>
     <string name="cancel">取消</string>

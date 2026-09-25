@@ -8,22 +8,21 @@ import com.paperloong.lux.constant.IlluminanceUnit
 import com.paperloong.lux.data.DetectRecordRepository
 import com.paperloong.lux.data.SettingRepository
 import com.paperloong.lux.di.qualifier.IODispatcher
-import com.paperloong.lux.ext.luxToFc
 import com.paperloong.lux.ext.sensorEventFlow
 import com.paperloong.lux.model.DetectRecord
+import com.paperloong.lux.model.DetectSession
+import com.paperloong.lux.model.TargetIlluminanceRange
+import com.paperloong.lux.model.judgeIlluminance
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import org.orbitmvi.orbit.OrbitContainer
 import org.orbitmvi.orbit.OrbitContainerHost
 import org.orbitmvi.orbit.viewmodel.orbitContainer
 import javax.inject.Inject
-import kotlin.math.max
-import kotlin.math.min
 
 /**
  *
@@ -44,16 +43,37 @@ class IlluminanceDetectViewModel @Inject constructor(
         orbitContainer(IlluminanceDetectUiState())
 
     private var currentJob: Job? = null
-    private val detectRecordList: MutableList<DetectRecord> = mutableListOf()
+    private val session = DetectSession()
 
     init {
         intent {
             settingRepository.getIlluminanceUnit()
-                .onEach { detectRecordList.clear() }
                 .collect { unit ->
+                    // 切换单位不再清空会话统计（内部恒为 lux）
+                    reduce { state.copy(unit = unit) }
+                }
+        }
+        intent {
+            settingRepository.getTargetRange()
+                .collect { target ->
                     reduce {
-                        IlluminanceDetectUiState(unit = unit)
+                        state.copy(
+                            target = target,
+                            judgment = judgeIlluminance(state.current, target)
+                        )
                     }
+                }
+        }
+        intent {
+            detectRecordRepository.observeRecentRecordList()
+                .collect { list ->
+                    reduce { state.copy(recentRecords = list) }
+                }
+        }
+        intent {
+            detectRecordRepository.observeLocationList()
+                .collect { list ->
+                    reduce { state.copy(locationSuggestions = list) }
                 }
         }
     }
@@ -61,35 +81,23 @@ class IlluminanceDetectViewModel @Inject constructor(
     fun registerLightSensorEventListener() {
         currentJob = intent {
             sensorEventFlow(application, Sensor.TYPE_LIGHT)
-                .map { sensorEvent ->
-                    val value = sensorEvent.values[0]
-                    DetectRecord(
-                        value = when (state.unit) {
-                            IlluminanceUnit.LUX -> value
-                            IlluminanceUnit.FC -> value.luxToFc()
-                        },
-                        unit = state.unit
-                    )
-                }
+                .map { sensorEvent -> sensorEvent.values[0] }
                 .flowOn(dispatcher)
-                .onEach { detectRecord ->
-                    detectRecordList.add(detectRecord)
+                .catch {
+                    postSideEffect(Snack(application.getString(R.string.error_sensor_not_find)))
                 }
-                .collect { detectRecord ->
-                    val min = if (state.initializedZero) detectRecord.value else min(
-                        state.min,
-                        detectRecord.value
-                    )
-                    val avg = detectRecordList.map { it.value }.average().toFloat()
-                    val max = max(state.max, detectRecord.value)
+                .collect { lux ->
+                    session.add(lux)
                     reduce {
                         state.copy(
-                            min = min,
-                            avg = avg,
-                            max = max,
-                            current = detectRecord.value,
-                            time = detectRecord.createTime,
-                            initializedZero = false
+                            current = lux,
+                            time = System.currentTimeMillis(),
+                            min = session.min,
+                            avg = session.avg,
+                            max = session.max,
+                            trend = session.trend,
+                            sessionCount = session.count,
+                            judgment = judgeIlluminance(lux, state.target)
                         )
                     }
                 }
@@ -109,17 +117,50 @@ class IlluminanceDetectViewModel @Inject constructor(
         }
     }
 
-    fun refreshData() {
+    /** 重新开始会话：清空统计与走势。 */
+    fun restartSession() {
         intent {
+            session.reset()
             reduce {
-                detectRecordList.clear()
-                IlluminanceDetectUiState(unit = state.unit)
+                state.copy(
+                    min = null,
+                    avg = null,
+                    max = null,
+                    trend = emptyList(),
+                    sessionCount = 0
+                )
             }
         }
     }
 
-    fun attemptAddRecord(record: DetectRecord) {
+    fun setTargetRange(min: Float, max: Float) {
+        val range = TargetIlluminanceRange.of(min, max) ?: return
         intent {
+            settingRepository.setTargetRange(range)
+        }
+    }
+
+    fun clearTargetRange() {
+        intent {
+            settingRepository.clearTargetRange()
+        }
+    }
+
+    fun attemptAddRecord(
+        value: Float,
+        unit: IlluminanceUnit,
+        time: Long,
+        location: String,
+        remark: String
+    ) {
+        intent {
+            val record = DetectRecord(
+                value = value,
+                unit = unit,
+                remark = remark,
+                location = location.trim(),
+                createTime = time
+            )
             detectRecordRepository.insertDetectRecord(record)
                 .catch {
                     postSideEffect(Snack(application.getString(R.string.error_add_record)))

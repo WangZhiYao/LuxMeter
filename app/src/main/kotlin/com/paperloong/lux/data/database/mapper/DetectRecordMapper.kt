@@ -13,9 +13,9 @@ import javax.inject.Inject
 class DetectRecordMapper @Inject constructor() : IEntityMapper<DetectRecordEntity, DetectRecord> {
 
     override fun mapToEntity(model: DetectRecord): DetectRecordEntity =
-        model.run { DetectRecordEntity(id, value, unit, remark, createTime) }
+        model.run { DetectRecordEntity(id, value, unit, remark, location, createTime) }
 
     override fun mapToModel(entity: DetectRecordEntity): DetectRecord =
-        entity.run { DetectRecord(id, value, unit, remark, createTime) }
+        entity.run { DetectRecord(id, value, unit, remark, location, createTime) }
 
 }

@@ -1,33 +1,58 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">LuxMeter</string>
 
-    <string name="min">Min</string>
-    <string name="avg">Avg</string>
-    <string name="max">Max</string>
-
     <string name="record">Record</string>
-    <string name="refresh_record">Refresh record</string>
-    <string name="remark">Remark</string>
-    <string name="add_record_success">Add record success</string>
+    <string name="record_list">Records</string>
+    <string name="remark_optional">Remark (optional)</string>
+    <string name="location">Location</string>
+    <string name="add_record_success">Record saved</string>
 
-    <string name="remove_all_record">Remove all record</string>
+    <string name="remove_all_record">Remove all records</string>
 
+    <string name="save_record">Save record</string>
+    <string name="dialog_title_add_record">Save record</string>
     <string name="dialog_title_tip">Tip</string>
-    <string name="dialog_title_add_record">Add record</string>
-    <string name="dialog_text_current_value">Value: %s</string>
-    <string name="dialog_text_current_unit">Unit: %s</string>
-    <string name="dialog_text_current_time">Time: %s</string>
-    <string name="dialog_text_remove_current_detect_record">Do you want to remove current detect record?</string>
-    <string name="dialog_text_remove_all_detect_record">Do you want to remove all detect records?</string>
+    <string name="dialog_text_remove_current_detect_record">Remove this record?</string>
+    <string name="dialog_text_remove_all_detect_record">Remove all records?</string>
+
+    <string name="target_range">Target light range</string>
+    <string name="target_min">Min (lux)</string>
+    <string name="target_max">Max (lux)</string>
+    <string name="target_hint">Readings inside the range are judged as good</string>
+    <string name="target_store_hint">Stored in lux; auto-converted when displaying FC</string>
+    <string name="set_target">＋ Set target range</string>
+    <string name="clear_target">Clear target</string>
+    <string name="target_range_format">Target %1$s – %2$s %3$s</string>
+
+    <string name="judgment_ok">✓ Good light</string>
+    <string name="judgment_low">↓ Too low</string>
+    <string name="judgment_high">↑ Too high</string>
+
+    <string name="session_trend">Session trend</string>
+    <string name="trend_scrub_hint">Touch to inspect</string>
+    <string name="restart_session">Restart</string>
+
+    <string name="recent_saves">Recent saves</string>
+    <string name="view_all">View all ›</string>
+    <string name="recent_saves_empty">No saved records yet</string>
+
+    <string name="search_hint">Search remark, location</string>
+    <string name="filter_all">All</string>
+    <string name="filter_all_with_count">All · %1$d</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+
+    <string name="export">Export</string>
+    <string name="export_success">Exported %1$d records</string>
+    <string name="error_export">Export failed</string>
+    <string name="error_export_empty">No records to export</string>
 
     <string name="confirm">Confirm</string>
     <string name="cancel">Cancel</string>
     <string name="back">Back</string>
 
-    <string name="error_sensor_not_find">Sensor not find</string>
+    <string name="error_sensor_not_find">Sensor not found</string>
     <string name="error_add_record">Can not record the data</string>
     <string name="error_remove_record">Can not remove the data</string>
     <string name="error_remove_all_record">Can not remove all the data</string>
-
 </resources>

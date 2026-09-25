@@ -18,6 +18,8 @@ data class DetectRecordEntity(
     val value: Float,
     val unit: IlluminanceUnit,
     val remark: String,
+    @ColumnInfo(name = "location", defaultValue = "")
+    val location: String = "",
     @ColumnInfo(name = "create_time")
     val createTime: Long
 )

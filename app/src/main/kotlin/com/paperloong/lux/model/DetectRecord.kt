@@ -13,5 +13,6 @@ data class DetectRecord(
     val value: Float,
     val unit: IlluminanceUnit,
     val remark: String = "",
+    val location: String = "",
     val createTime: Long = System.currentTimeMillis()
 )

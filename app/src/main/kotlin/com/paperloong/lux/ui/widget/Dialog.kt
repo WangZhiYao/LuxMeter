@@ -11,7 +11,7 @@ import com.paperloong.lux.R
 import com.paperloong.lux.ui.theme.LuxMeterTheme
 
 /**
- *
+ * 通用确认弹窗。
  *
  * @author WangZhiYao
  * @since 2024/4/28

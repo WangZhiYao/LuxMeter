@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -35,11 +36,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -48,6 +51,26 @@ import androidx.compose.ui.unit.sp
 import com.paperloong.lux.R
 import com.paperloong.lux.model.TargetIlluminanceRange
 import kotlin.math.roundToInt
+
+/** 走势图的数值显示域换算：lux -> 显示数值与其文本，随单位一起由构造方记忆。 */
+class TrendValueFormat(
+    val displayValueOf: (Float) -> Float,
+    val valueTextOf: (Float) -> String
+)
+
+/** 一次绘制的几何与数据快照，供各绘制函数共享，避免拆分后参数过多。 */
+private class TrendDrawContext(
+    val values: List<Float>,
+    val top: Float,
+    val plotLeft: Float,
+    val plotRight: Float
+) {
+    fun xOf(index: Int): Float =
+        if (values.size <= 1) plotLeft else plotLeft + (plotRight - plotLeft) * index / (values.size - 1)
+
+    fun yOf(value: Float, height: Float): Float =
+        height * (1f - (value / top).coerceIn(0f, 1f))
+}
 
 /**
  * 会话走势卡：带刻度网格的面积折线图 + 目标区间横带 + 按住/横拖查看数值 + 重新开始按钮。
@@ -61,8 +84,7 @@ fun SessionTrendCard(
     target: TargetIlluminanceRange?,
     topLabelText: String,
     hintText: String,
-    displayValueOf: (Float) -> Float,
-    valueTextOf: (Float) -> String,
+    valueFormat: TrendValueFormat,
     onRestartClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -105,8 +127,7 @@ fun SessionTrendCard(
         SessionTrendChart(
             trend = trend,
             target = target,
-            displayValueOf = displayValueOf,
-            valueTextOf = valueTextOf,
+            valueFormat = valueFormat,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 6.dp)
@@ -125,29 +146,19 @@ private fun lerpByIndex(from: List<Float>, to: List<Float>, fraction: Float): Li
 private fun SessionTrendChart(
     trend: List<Float>,
     target: TargetIlluminanceRange?,
-    displayValueOf: (Float) -> Float,
-    valueTextOf: (Float) -> String,
+    valueFormat: TrendValueFormat,
     modifier: Modifier = Modifier
 ) {
-    val lineColor = MaterialTheme.colorScheme.primary
-    val bandColor = lineColor.copy(alpha = 0.10f)
-    val edgeColor = lineColor.copy(alpha = 0.50f)
-    val edgeNumberColor = lineColor.copy(alpha = 0.90f)
-    val gridColor = MaterialTheme.colorScheme.outlineVariant
-    val axisLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val dotCoreColor = MaterialTheme.colorScheme.surface
-    val crosshairColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-    val bubbleColor = MaterialTheme.colorScheme.onSurface
-    val bubbleTextColor = MaterialTheme.colorScheme.surface
+    val scheme = MaterialTheme.colorScheme
     val textMeasurer = rememberTextMeasurer()
     // 按住/横拖时显示准线与数值气泡；用 rememberUpdatedState 避免新数据到达时打断手势
     val currentTrend by rememberUpdatedState(trend)
     var scrubIndex by remember { mutableStateOf<Int?>(null) }
 
     // 全部换算到显示单位域后再算量程与刻度，lux/fc 切换即整体换算
-    val display = remember(trend, displayValueOf) { trend.map(displayValueOf) }
-    val displayTarget = remember(target, displayValueOf) {
-        target?.let { displayValueOf(it.minLux) to displayValueOf(it.maxLux) }
+    val display = remember(trend, valueFormat) { trend.map(valueFormat.displayValueOf) }
+    val displayTarget = remember(target, valueFormat) {
+        target?.let { valueFormat.displayValueOf(it.minLux) to valueFormat.displayValueOf(it.maxLux) }
     }
     val scale = remember(display, displayTarget) {
         niceChartScale(maxOf(display.maxOrNull() ?: 0f, displayTarget?.second ?: 0f))
@@ -156,7 +167,7 @@ private fun SessionTrendChart(
     // 文本测量在组合作用域完成
     val tickStyle = TextStyle(fontSize = 9.sp)
     val tickLayouts = remember(scale) {
-        scale.ticks.map { textMeasurer.measure(valueTextOf(it), tickStyle) }
+        scale.ticks.map { textMeasurer.measure(valueFormat.valueTextOf(it), tickStyle) }
     }
 
     // 刻度槽宽随最宽刻度文字伸缩，避免大数值被左缘裁切
@@ -165,8 +176,8 @@ private fun SessionTrendChart(
     }
     val edgeLayouts = remember(displayTarget) {
         displayTarget?.let { (minValue, maxValue) ->
-            textMeasurer.measure(valueTextOf(maxValue), tickStyle) to
-                    textMeasurer.measure(valueTextOf(minValue), tickStyle)
+            textMeasurer.measure(valueFormat.valueTextOf(maxValue), tickStyle) to
+                    textMeasurer.measure(valueFormat.valueTextOf(minValue), tickStyle)
         }
     }
 
@@ -202,8 +213,8 @@ private fun SessionTrendChart(
     val bubbleLayout = scrubIndex?.let { index ->
         currentTrend.getOrNull(index)?.let { lux ->
             textMeasurer.measure(
-                valueTextOf(displayValueOf(lux)),
-                TextStyle(fontSize = 11.sp, color = bubbleTextColor)
+                valueFormat.valueTextOf(valueFormat.displayValueOf(lux)),
+                TextStyle(fontSize = 11.sp, color = scheme.surface)
             )
         }
     }
@@ -247,164 +258,195 @@ private fun SessionTrendChart(
         // 无数据时不画
         if (display.isEmpty()) return@Canvas
         val values = lerpByIndex(morphFrom, display, morph.value)
-        val top = topAnim.value
-        val tickAreaWidth = tickAreaWidthDp.toPx()
-        val rightInset = 6.dp.toPx()
-        val plotLeft = tickAreaWidth
-        val plotRight = size.width - rightInset
-        val plotWidth = plotRight - plotLeft
-
-        fun xOf(index: Int): Float =
-            if (values.size <= 1) plotLeft else plotLeft + plotWidth * index / (values.size - 1)
-
-        fun yOf(value: Float): Float =
-            size.height * (1f - (value / top).coerceIn(0f, 1f))
-
-        // 网格线与左侧刻度
-        tickLayouts.forEachIndexed { index, layout ->
-            val y = yOf(scale.ticks[index])
-            drawLine(
-                color = gridColor,
-                start = Offset(plotLeft, y),
-                end = Offset(plotRight, y),
-                strokeWidth = 1.dp.toPx()
-            )
-            drawText(
-                textLayoutResult = layout,
-                color = axisLabelColor,
-                topLeft = Offset(
-                    x = plotLeft - 4.dp.toPx() - layout.size.width,
-                    y = y - layout.size.height / 2f
-                )
-            )
-        }
-        // 目标带：淡填充 + 虚线边界 + 左端纯数值
-        if (displayTarget != null) {
-            val (minValue, maxValue) = displayTarget
-            val yTop = yOf(maxValue)
-            val yBottom = yOf(minValue)
-            drawRect(
-                color = bandColor,
-                topLeft = Offset(plotLeft, yTop),
-                size = Size(plotWidth, (yBottom - yTop).coerceAtLeast(0f))
-            )
-            val dashEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx()))
-            drawLine(
-                color = edgeColor,
-                start = Offset(plotLeft, yTop),
-                end = Offset(plotRight, yTop),
-                strokeWidth = 1.5.dp.toPx(),
-                pathEffect = dashEffect
-            )
-            drawLine(
-                color = edgeColor,
-                start = Offset(plotLeft, yBottom),
-                end = Offset(plotRight, yBottom),
-                strokeWidth = 1.5.dp.toPx(),
-                pathEffect = dashEffect
-            )
-            edgeLayouts?.let { (topLayout, bottomLayout) ->
-                drawText(
-                    textLayoutResult = topLayout,
-                    color = edgeNumberColor,
-                    topLeft = Offset(
-                        x = plotLeft + 4.dp.toPx(),
-                        y = (yTop - topLayout.size.height - 2.dp.toPx()).coerceAtLeast(0f)
-                    )
-                )
-                drawText(
-                    textLayoutResult = bottomLayout,
-                    color = edgeNumberColor,
-                    topLeft = Offset(
-                        x = plotLeft + 4.dp.toPx(),
-                        y = (yBottom + 3.dp.toPx()).coerceAtMost(size.height - bottomLayout.size.height)
-                    )
-                )
-            }
-        }
-        // 折线 + 贴合折线形状的面积渐变（从数据最高点向下渐隐）
-        val points = values.mapIndexed { index, value -> Offset(xOf(index), yOf(value)) }
-        val dataTopY = points.minOf { it.y }
-        val linePath = Path().apply {
-            points.forEachIndexed { index, point ->
-                if (index == 0) moveTo(point.x, point.y) else lineTo(point.x, point.y)
-            }
-        }
-        val areaPath = Path().apply {
-            addPath(linePath)
-            lineTo(points.last().x, size.height)
-            lineTo(points.first().x, size.height)
-            close()
-        }
-        drawPath(
-            path = areaPath,
-            brush = Brush.verticalGradient(
-                colors = listOf(lineColor.copy(alpha = 0.24f), Color.Transparent),
-                startY = dataTopY,
-                endY = size.height
-            )
+        val ctx = TrendDrawContext(
+            values = values,
+            top = topAnim.value,
+            plotLeft = tickAreaWidthDp.toPx(),
+            plotRight = size.width - 6.dp.toPx()
         )
-        drawPath(
-            path = linePath,
-            color = lineColor,
-            style = Stroke(
-                width = 2.5.dp.toPx(),
-                cap = StrokeCap.Round,
-                join = StrokeJoin.Round
-            )
-        )
-        // 末端点：surface 芯 + primary 环，右缘留白防裁切
-        points.last().let { point ->
-            drawCircle(color = dotCoreColor, radius = 4.dp.toPx(), center = point)
-            drawCircle(
-                color = lineColor,
-                radius = 4.dp.toPx(),
-                center = point,
-                style = Stroke(width = 2.dp.toPx())
-            )
+        val points = values.mapIndexed { index, value ->
+            Offset(ctx.xOf(index), ctx.yOf(value, size.height))
         }
-        // 按住/横拖：竖直准线 + 高亮点 + 数值气泡（点靠上时气泡翻到下方）
-        val index = scrubIndex ?: return@Canvas
-        val layout = bubbleLayout ?: return@Canvas
-        val point = points.getOrNull(index) ?: return@Canvas
+        drawGridAndTicks(scheme, scale, tickLayouts, ctx)
+        drawTargetBand(scheme, displayTarget, edgeLayouts, ctx)
+        drawTrendLine(scheme, points)
+        drawScrubOverlay(scheme, points, scrubIndex, bubbleLayout, ctx)
+    }
+}
+
+/** 网格线与左侧刻度。 */
+private fun DrawScope.drawGridAndTicks(
+    scheme: ColorScheme,
+    scale: ChartScale,
+    tickLayouts: List<TextLayoutResult>,
+    ctx: TrendDrawContext
+) {
+    tickLayouts.forEachIndexed { index, layout ->
+        val y = ctx.yOf(scale.ticks[index], size.height)
         drawLine(
-            color = crosshairColor,
-            start = Offset(point.x, 0f),
-            end = Offset(point.x, size.height),
-            strokeWidth = 1.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx()))
-        )
-        drawCircle(color = dotCoreColor, radius = 5.dp.toPx(), center = point)
-        drawCircle(
-            color = lineColor,
-            radius = 5.dp.toPx(),
-            center = point,
-            style = Stroke(width = 2.5.dp.toPx())
-        )
-        val bubbleWidth = layout.size.width + 20.dp.toPx()
-        val bubbleHeight = 22.dp.toPx()
-        val bubbleX = (point.x - bubbleWidth / 2).coerceIn(
-            plotLeft,
-            (plotRight - bubbleWidth).coerceAtLeast(plotLeft)
-        )
-        val bubbleAboveY = point.y - 10.dp.toPx() - bubbleHeight
-        val bubbleY = if (bubbleAboveY >= 0f) {
-            bubbleAboveY
-        } else {
-            (point.y + 10.dp.toPx()).coerceAtMost(size.height - bubbleHeight)
-        }
-        drawRoundRect(
-            color = bubbleColor,
-            topLeft = Offset(bubbleX, bubbleY),
-            size = Size(bubbleWidth, bubbleHeight),
-            cornerRadius = CornerRadius(11.dp.toPx())
+            color = scheme.outlineVariant,
+            start = Offset(ctx.plotLeft, y),
+            end = Offset(ctx.plotRight, y),
+            strokeWidth = 1.dp.toPx()
         )
         drawText(
             textLayoutResult = layout,
+            color = scheme.onSurfaceVariant,
             topLeft = Offset(
-                bubbleX + 10.dp.toPx(),
-                bubbleY + (bubbleHeight - layout.size.height) / 2f
+                x = ctx.plotLeft - 4.dp.toPx() - layout.size.width,
+                y = y - layout.size.height / 2f
             )
         )
     }
+}
+
+/** 目标带：淡填充 + 虚线边界 + 左端纯数值。 */
+private fun DrawScope.drawTargetBand(
+    scheme: ColorScheme,
+    target: Pair<Float, Float>?,
+    edgeLayouts: Pair<TextLayoutResult, TextLayoutResult>?,
+    ctx: TrendDrawContext
+) {
+    if (target == null) return
+    val (minValue, maxValue) = target
+    val yTop = ctx.yOf(maxValue, size.height)
+    val yBottom = ctx.yOf(minValue, size.height)
+    val plotWidth = ctx.plotRight - ctx.plotLeft
+    val primary = scheme.primary
+    drawRect(
+        color = primary.copy(alpha = 0.10f),
+        topLeft = Offset(ctx.plotLeft, yTop),
+        size = Size(plotWidth, (yBottom - yTop).coerceAtLeast(0f))
+    )
+    val dashEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx()))
+    drawLine(
+        color = primary.copy(alpha = 0.50f),
+        start = Offset(ctx.plotLeft, yTop),
+        end = Offset(ctx.plotRight, yTop),
+        strokeWidth = 1.5.dp.toPx(),
+        pathEffect = dashEffect
+    )
+    drawLine(
+        color = primary.copy(alpha = 0.50f),
+        start = Offset(ctx.plotLeft, yBottom),
+        end = Offset(ctx.plotRight, yBottom),
+        strokeWidth = 1.5.dp.toPx(),
+        pathEffect = dashEffect
+    )
+    edgeLayouts?.let { (topLayout, bottomLayout) ->
+        drawText(
+            textLayoutResult = topLayout,
+            color = primary.copy(alpha = 0.90f),
+            topLeft = Offset(
+                x = ctx.plotLeft + 4.dp.toPx(),
+                y = (yTop - topLayout.size.height - 2.dp.toPx()).coerceAtLeast(0f)
+            )
+        )
+        drawText(
+            textLayoutResult = bottomLayout,
+            color = primary.copy(alpha = 0.90f),
+            topLeft = Offset(
+                x = ctx.plotLeft + 4.dp.toPx(),
+                y = (yBottom + 3.dp.toPx()).coerceAtMost(size.height - bottomLayout.size.height)
+            )
+        )
+    }
+}
+
+/** 折线 + 贴合折线形状的面积渐变（从数据最高点向下渐隐）+ 末端点（surface 芯 + primary 环）。 */
+private fun DrawScope.drawTrendLine(
+    scheme: ColorScheme,
+    points: List<Offset>
+) {
+    val lineColor = scheme.primary
+    val dataTopY = points.minOf { it.y }
+    val linePath = Path().apply {
+        points.forEachIndexed { index, point ->
+            if (index == 0) moveTo(point.x, point.y) else lineTo(point.x, point.y)
+        }
+    }
+    val areaPath = Path().apply {
+        addPath(linePath)
+        lineTo(points.last().x, size.height)
+        lineTo(points.first().x, size.height)
+        close()
+    }
+    drawPath(
+        path = areaPath,
+        brush = Brush.verticalGradient(
+            colors = listOf(lineColor.copy(alpha = 0.24f), Color.Transparent),
+            startY = dataTopY,
+            endY = size.height
+        )
+    )
+    drawPath(
+        path = linePath,
+        color = lineColor,
+        style = Stroke(
+            width = 2.5.dp.toPx(),
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    )
+    points.last().let { point ->
+        drawCircle(color = scheme.surface, radius = 4.dp.toPx(), center = point)
+        drawCircle(
+            color = lineColor,
+            radius = 4.dp.toPx(),
+            center = point,
+            style = Stroke(width = 2.dp.toPx())
+        )
+    }
+}
+
+/** 按住/横拖：竖直准线 + 高亮点 + 数值气泡（点靠上时气泡翻到下方）。 */
+private fun DrawScope.drawScrubOverlay(
+    scheme: ColorScheme,
+    points: List<Offset>,
+    scrubIndex: Int?,
+    bubbleLayout: TextLayoutResult?,
+    ctx: TrendDrawContext
+) {
+    val index = scrubIndex ?: return
+    val layout = bubbleLayout ?: return
+    val point = points.getOrNull(index) ?: return
+    drawLine(
+        color = scheme.onSurface.copy(alpha = 0.5f),
+        start = Offset(point.x, 0f),
+        end = Offset(point.x, size.height),
+        strokeWidth = 1.dp.toPx(),
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx()))
+    )
+    drawCircle(color = scheme.surface, radius = 5.dp.toPx(), center = point)
+    drawCircle(
+        color = scheme.primary,
+        radius = 5.dp.toPx(),
+        center = point,
+        style = Stroke(width = 2.5.dp.toPx())
+    )
+    val bubbleWidth = layout.size.width + 20.dp.toPx()
+    val bubbleHeight = 22.dp.toPx()
+    val bubbleX = (point.x - bubbleWidth / 2).coerceIn(
+        ctx.plotLeft,
+        (ctx.plotRight - bubbleWidth).coerceAtLeast(ctx.plotLeft)
+    )
+    val bubbleAboveY = point.y - 10.dp.toPx() - bubbleHeight
+    val bubbleY = if (bubbleAboveY >= 0f) {
+        bubbleAboveY
+    } else {
+        (point.y + 10.dp.toPx()).coerceAtMost(size.height - bubbleHeight)
+    }
+    drawRoundRect(
+        color = scheme.onSurface,
+        topLeft = Offset(bubbleX, bubbleY),
+        size = Size(bubbleWidth, bubbleHeight),
+        cornerRadius = CornerRadius(11.dp.toPx())
+    )
+    drawText(
+        textLayoutResult = layout,
+        topLeft = Offset(
+            bubbleX + 10.dp.toPx(),
+            bubbleY + (bubbleHeight - layout.size.height) / 2f
+        )
+    )
 }

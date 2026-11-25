@@ -51,6 +51,7 @@ import com.paperloong.lux.ui.detect.components.SaveRecordDialog
 import com.paperloong.lux.ui.detect.components.SessionTrendCard
 import com.paperloong.lux.ui.detect.components.StatsBar
 import com.paperloong.lux.ui.detect.components.TargetRangeDialog
+import com.paperloong.lux.ui.detect.components.TrendValueFormat
 import com.paperloong.lux.ui.detect.components.UnitTogglePill
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
@@ -224,17 +225,19 @@ fun IlluminanceDetectContent(
                 maxText = state.max?.let { state.unit.format(displayValueOf(it, state.unit)) }
                     ?: "–"
             )
-            // 换算 lambda 以 unit 为 key 记忆，避免每次重组生成新实例导致图内动画重启
-            val toDisplayValue =
-                remember(state.unit) { { lux: Float -> displayValueOf(lux, state.unit) } }
-            val toValueText = remember(state.unit) { { value: Float -> state.unit.format(value) } }
+            // 换算以 unit 为 key 记忆，避免每次重组生成新实例导致图内动画重启
+            val valueFormat = remember(state.unit) {
+                TrendValueFormat(
+                    displayValueOf = { displayValueOf(it, state.unit) },
+                    valueTextOf = { state.unit.format(it) }
+                )
+            }
             SessionTrendCard(
                 trend = state.trend,
                 target = state.target,
                 topLabelText = stringResource(id = R.string.session_trend),
                 hintText = stringResource(id = R.string.trend_scrub_hint),
-                displayValueOf = toDisplayValue,
-                valueTextOf = toValueText,
+                valueFormat = valueFormat,
                 onRestartClick = onRestartSessionClick
             )
             val yesterdayText = stringResource(id = R.string.yesterday)

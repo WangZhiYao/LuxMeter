@@ -9,15 +9,19 @@ plugins {
 android {
     namespace = "com.paperloong.lux"
     compileSdk {
-        version = release(37)
+        // Compose 1.13.x(BOM 2026.11.01)的 AAR 元数据要求 compileSdk >= 37.1,使用平台 android-37.2
+        version = release(37) {
+            minorApiLevel = 2
+        }
     }
 
     defaultConfig {
         applicationId = "com.paperloong.lux"
         minSdk = 24
         targetSdk = 37
-        versionCode = 4
-        versionName = "3.1"
+        // versionCode = major * 10000 + minor * 100 + patch，须始终大于 Play 后台已上传的最大值，不可复用
+        versionCode = 30200
+        versionName = "3.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

@@ -19,6 +19,7 @@ object CsvExporter {
 
     fun export(records: List<DetectRecord>): String {
         val sb = StringBuilder()
+        // 引号内是 U+FEFF(BOM):让 Excel 将导出的 CSV 识别为 UTF-8(lint.xml 中按文件忽略 ByteOrderMark)
         sb.append('﻿')
         sb.append("time,value,unit,location,remark\n")
         for (record in records) {

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- CsvExporter.kt 有意在源码中内嵌 U+FEFF(BOM)字符,导出的 CSV 借此被 Excel 识别为 UTF-8;
+         ByteOrderMark 为纯文本扫描检查,无法在代码内局部抑制,故仅对此文件忽略 -->
+    <issue id="ByteOrderMark">
+        <ignore path="**/data/CsvExporter.kt" />
+    </issue>
+</lint>
